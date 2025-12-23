@@ -42,14 +42,25 @@
       </div>
 
       <!-- Résultats -->
-      <div class="mb-4">
+      <div class="mb-4" v-if="!isLoading && !error">
         <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">
           {{ filteredTexts.length }} textes trouvés
         </p>
       </div>
 
+      <!-- Chargement -->
+      <div v-if="isLoading" class="flex justify-center items-center py-20">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+
+      <!-- Erreur -->
+      <div v-else-if="error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 p-6 rounded-xl text-center mb-8">
+        <span class="material-icons-outlined text-4xl mb-2 block">error_outline</span>
+        {{ error }}
+      </div>
+
       <!-- Liste des textes -->
-      <div class="space-y-4">
+      <div v-else class="space-y-4">
         <article 
           v-for="(text, index) in filteredTexts" 
           :key="index"
@@ -77,38 +88,71 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from '../router';
 
+const router = useRouter();
 const searchQuery = ref('');
+const texts = ref([]);
+const isLoading = ref(true);
+const error = ref(null);
 
-const texts = [
-  {
-    id: 1,
-    category: 'Droit Commercial Général',
-    title: 'Définition du commerçant',
-    reference: 'Article 2 - Acte Uniforme sur le Droit Commercial Général',
-    content: 'Sont commerçants ceux qui accomplissent des actes de commerce et en font leur profession habituelle.'
-  },
-  {
-    id: 2,
-    category: 'Droit Commercial Général',
-    title: 'Actes de commerce par nature',
-    reference: 'Article 3 - Acte Uniforme sur le Droit Commercial Général',
-    content: 'L\'acte de commerce par nature est celui par lequel une personne s\'entremet dans la circulation des biens qu\'elle produit ou achète ou par lequel elle fournit des prestations de service avec l\'intention d\'en tirer un profit pécuniaire.'
-  },
-  {
-    id: 3,
-    category: 'Droit Commercial Général',
-    title: 'Prescription quinquennale',
-    reference: 'Article 16 - Acte Uniforme sur le Droit Commercial Général',
-    content: 'Les obligations nées à l\'occasion de leur commerce entre commerçants, ou entre commerçants et non-commerçants, se prescrivent par cinq ans si elles ne sont pas soumises à des prescriptions plus courtes.'
+onMounted(async () => {
+  try {
+    const response = await fetch('https://aicha.gams-pro.com/api/lois');
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement des données');
+    }
+    const data = await response.json();
+    console.log('Données reçues:', data);
+    
+    // Adaptation des données selon la structure reçue
+    // On suppose que l'API retourne un tableau d'objets
+    if (Array.isArray(data)) {
+      texts.value = data.map(item => ({
+        id: item.id,
+        category: item.categorie || 'Texte de loi',
+        title: item.name || item.nom || 'Sans titre',
+        reference: item.reference || '',
+        content: item.contenu || item.description || 'Aucun contenu disponible'
+      }));
+    } else if (data.data && Array.isArray(data.data)) {
+      // Cas où les données sont dans une propriété 'data' (pagination par exemple)
+      texts.value = data.data.map(item => ({
+        id: item.id,
+        category: item.categorie || 'Texte de loi',
+        title: item.titre || item.nom || 'Sans titre',
+        reference: item.reference || '',
+        content: item.contenu || item.description || 'Aucun contenu disponible'
+      }));
+    } else {
+      console.warn('Structure de données inattendue');
+      texts.value = [];
+    }
+  } catch (err) {
+    console.error('Erreur API:', err);
+    error.value = "Impossible de charger les textes juridiques.";
+    
+    // Fallback aux données de démonstration si l'API échoue (pour le développement)
+    texts.value = [
+      {
+        id: 1,
+        category: 'Droit Commercial Général',
+        title: 'Définition du commerçant',
+        reference: 'Article 2 - Acte Uniforme sur le Droit Commercial Général',
+        content: 'Sont commerçants ceux qui accomplissent des actes de commerce et en font leur profession habituelle.'
+      },
+     
+    ];
+  } finally {
+    isLoading.value = false;
   }
-];
+});
 
 const filteredTexts = computed(() => {
-  if (!searchQuery.value) return texts;
+  if (!searchQuery.value) return texts.value;
   const query = searchQuery.value.toLowerCase();
-  return texts.filter(text => 
+  return texts.value.filter(text => 
     text.title.toLowerCase().includes(query) ||
     text.content.toLowerCase().includes(query) ||
     text.reference.toLowerCase().includes(query) ||
@@ -128,6 +172,7 @@ const toggleFilters = () => {
 const selectText = (text) => {
   // Navigation vers la vue détaillée du texte
   console.log('Sélection du texte:', text);
+  router.navigate('loiDetails', { id: text.id });
 };
 </script>
 

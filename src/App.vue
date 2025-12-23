@@ -47,7 +47,7 @@
             </div>
           </button>
         </div>
-        <button class="w-full max-w-3xl flex items-center justify-center gap-2 py-3 px-6 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 hover:border-primary transition-all duration-300 font-semibold text-sm mb-12 group">
+        <button @click="router.navigate('textes')" class="w-full max-w-3xl flex items-center justify-center gap-2 py-3 px-6 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 hover:border-primary transition-all duration-300 font-semibold text-sm mb-12 group">
           <span class="material-icons-round text-lg group-hover:scale-110 transition-transform">search</span>
           Rechercher dans les textes juridiques OHADA
         </button>
@@ -70,6 +70,11 @@
       <!-- Page Comparateur -->
       <div v-if="router.currentRoute.value === 'comparateur'" class="w-full">
         <AppComparateur />
+      </div>
+
+      <!-- Page Détails Loi -->
+      <div v-if="router.currentRoute.value === 'loiDetails'" class="w-full">
+        <LoiDetails />
       </div>
 
     </main>
@@ -106,6 +111,7 @@ import { useRouter } from './router.js';
 import AppNavigation from './components/AppNavigation.vue';
 import TexteJuridique from './views/Texte-juridique.vue'
 import AppComparateur from './views/AppComparateur.vue';
+import LoiDetails from './views/LoiDetails.vue';
 import { useDark } from '@vueuse/core';
 
 const router = useRouter();
